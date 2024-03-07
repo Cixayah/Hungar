@@ -127,6 +127,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+#IDE
+.vscode
+.idea
+.gitignore
 
 # Spyder project settings
 .spyderproject
