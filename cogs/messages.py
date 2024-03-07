@@ -12,4 +12,4 @@ class Messages(commands.Cog):
           await msg.add_reaction('👾')
     
 async def setup(bot):
-    await bot.add_cog()
+    await bot.add_cog(Messages(bot))
