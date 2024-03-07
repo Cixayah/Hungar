@@ -15,20 +15,21 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 bot = commands.Bot(command_prefix="/", intents=perms)
 
 async def load_cogs():
+    # Carrega os módulos (cogs) do bot a partir do diretório 'cogs'
     for archive in os.listdir('cogs'):
         if archive.endswith('.py'):
-              await bot.load_extension(f'cogs.{archive[:-3]}')
+            await bot.load_extension(f'cogs.{archive[:-3]}')
         
 @bot.command()
 async def syncro(ctx: commands.Context):
     # IDs dos membros autorizados a usar o comando
     allowed_ids = [270943487300599808, 223614228903231488, 476897909565292544]
-    #cix, w7, lari
+    # cix, w7, lari
 
     # Verifica se o autor do comando está na lista de IDs autorizados
     if ctx.author.id in allowed_ids:
         sincs = await bot.tree.sync()
-        # Responde com o número total de comandos
+        # Responde com o número total de comandos registrados
         await ctx.reply(f'Total de comandos registrados: {len(sincs)}')
     else:
         # Responde se o autor não estiver autorizado
@@ -36,17 +37,22 @@ async def syncro(ctx: commands.Context):
 
 @bot.tree.command(description='Responde com: Opa, [seu nome] bão?')
 async def eai(interact: discord.Interaction):
-    await interact.response.send_message(f'Opa {interact.user.name}, bão?', ephemeral=True)
+    # Responde a uma interação com uma mensagem efêmera
+    await interact.response.send_message(f'Opa {interact.user.name}, bão?')     #, ephemeral=True após àspas para mensagem privada
+
 
 # Eventos do bot
 @bot.event
 async def on_member_remove(member: discord.Member):
+    # Envia uma mensagem quando um membro deixa o servidor
     channel = bot.get_channel(602254582118350868)
     await channel.send(f"{member.display_name} cornão saiu do server!")
 
 @bot.event  # Verificação se o bot ficou online.
 async def on_ready():
+    # Carrega os módulos (cogs) quando o bot está pronto
     await load_cogs()
     print("Gol do Yuri Alberto!")
 
+# Inicia o bot com o token fornecido
 bot.run(TOKEN)
