@@ -23,6 +23,6 @@ async def on_member_remove(member:discord.Member):
 @bot.event #Verificação se o bot ficou online.
 async def on_ready():
     await bot.tree.sync()
-    print("Gol do Yuri Alberto!")
+    print("Testando espelhamento!")
 
 bot.run(token)
