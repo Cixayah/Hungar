@@ -35,12 +35,6 @@ async def syncro(ctx: commands.Context):
         # Responde se o autor não estiver autorizado
         await ctx.reply('Apenas a equipe pode usar este comando!')
 
-@bot.tree.command(description='Responde com: Opa, [seu nome] bão?')
-async def eai(interact: discord.Interaction):
-    # Responde a uma interação com uma mensagem efêmera
-    await interact.response.send_message(f'Opa {interact.user.name}, bão?')     #, ephemeral=True após àspas para mensagem privada
-
-
 # Eventos do bot
 @bot.event
 async def on_member_remove(member: discord.Member):
