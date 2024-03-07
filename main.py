@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Permissões do Bot
 perms = discord.Intents.default()
 perms.members = True
-perms.message_content = True
+#perms.message_content = True
 # .env
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -26,9 +26,10 @@ async def syncro(ctx: commands.Context):
         # Responde se o autor não estiver autorizado
         await ctx.reply('Apenas a equipe pode usar este comando!')
 
-@bot.command(description='Responde com: Opa, [seu nome] bão?')
-async def eai(ctx: commands.Context):
-    await ctx.send(f'Opa {ctx.author.name}, bão?')
+@bot.tree.command(description='Responde com: Opa, [seu nome] bão?')
+async def eai(interact: discord.Interaction):
+    await interact.response.send_message(f'Opa {interact.user.name}, bão?', ephemeral=True)
+
 
 @bot.command(description='Soma dois números')
 async def somar(ctx: commands.Context, number_one: float, number_two: float):
