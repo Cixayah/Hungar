@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+
 # Permissões do Bot
 perms = discord.Intents.default()
 perms.members = True
@@ -13,6 +14,11 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 # Prefixo do bot (Não altere, deixe "/" por padrão do discord)
 bot = commands.Bot(command_prefix="/", intents=perms)
 
+async def load_cogs():
+    for archive in os.listdir('cogs'):
+        if archive.endswith('.py'):
+              await bot.load_extension(f'cogs.{archive[:-3]}')
+        
 @bot.command()
 async def syncro(ctx: commands.Context):
     # IDs dos membros autorizados a usar o comando
@@ -30,12 +36,6 @@ async def syncro(ctx: commands.Context):
 async def eai(interact: discord.Interaction):
     await interact.response.send_message(f'Opa {interact.user.name}, bão?', ephemeral=True)
 
-
-@bot.command(description='Soma dois números')
-async def somar(ctx: commands.Context, number_one: float, number_two: float):
-    result = number_one + number_two
-    await ctx.send(f'A soma entre {number_one} + {number_two} é igual a {result}.')
-
 # Eventos do bot
 @bot.event
 async def on_member_remove(member: discord.Member):
@@ -44,6 +44,7 @@ async def on_member_remove(member: discord.Member):
 
 @bot.event  # Verificação se o bot ficou online.
 async def on_ready():
+    await load_cogs()
     print("Gol do Yuri Alberto!")
 
 bot.run(TOKEN)
