@@ -9,7 +9,9 @@ class Messages(commands.Cog):
         
     @commands.Cog.listener()
     async def on_message(self, msg:discord.Message):
+        if msg.author ==self.bot.user:
           await msg.add_reaction('👾')
+          
     @app_commands.command(description='Responde com: Opa, [seu nome] bão?')
     async def eai(self, interact: discord.Interaction ):
         # Responde a uma interação com uma mensagem efêmera
