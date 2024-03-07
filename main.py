@@ -27,8 +27,9 @@ async def syncro(ctx: commands.Context):
 
     # Verifica se o autor do comando está na lista de IDs autorizados
     if ctx.author.id in allowed_ids:
+        sincs = await bot.tree.sync()
         # Responde com o número total de comandos
-        await ctx.reply(f'Total de comandos registrados: {len(bot.commands)}')
+        await ctx.reply(f'Total de comandos registrados: {len(sincs)}')
     else:
         # Responde se o autor não estiver autorizado
         await ctx.reply('Apenas a equipe pode usar este comando!')
