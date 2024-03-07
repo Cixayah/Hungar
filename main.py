@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Permissões do Bot
 perms = discord.Intents.default()
 perms.members = True
-#perms.message_content = True
+perms.message_content = True
 # .env
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
