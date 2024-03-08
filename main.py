@@ -46,7 +46,7 @@ async def on_member_remove(member: discord.Member):
 async def on_ready():
     # Carrega os módulos (cogs) quando o bot está pronto
     await load_cogs()
-    print("Gol do Yuri Alberto!")
+    print("BOT ON!")
 
 # Inicia o bot com o token fornecido
 bot.run(TOKEN)
