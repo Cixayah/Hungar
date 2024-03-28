@@ -15,6 +15,6 @@ class Messages(commands.Cog):
     @app_commands.command(description='Responde com: Opa, [seu nome] bão?')
     async def eai(self, interact: discord.Interaction ):
         # Responde a uma interação com uma mensagem efêmera
-        await interact.response.send_message(f'Opa {interact.user.name}, bão? Testando 2803')     #, ephemeral=True após àspas para mensagem privada
+        await interact.response.send_message(f'Opa {interact.user.name}, bão?')     #, ephemeral=True após àspas para mensagem privada
 async def setup(bot):
     await bot.add_cog(Messages(bot))
