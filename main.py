@@ -38,9 +38,11 @@ async def syncro(ctx: commands.Context):
 # Eventos do bot
 @bot.event
 async def on_member_remove(member: discord.Member):
-    # Envia uma mensagem quando um membro deixa o servidor
+    # Envia uma mensagem quando um membro deixa o servidor, mencionando o perfil do membro
     channel = bot.get_channel(602254582118350868)
-    await channel.send(f"{member.display_name} cornão saiu do server!")
+    mention = member.mention  # Obtém a menção do perfil do membro que saiu
+    await channel.send(f"A pessoa corna {mention} saiu do server!")
+
 
 @bot.event  # Verificação se o bot ficou online.
 async def on_ready():

@@ -16,5 +16,11 @@ class Messages(commands.Cog):
     async def eai(self, interact: discord.Interaction ):
         # Responde a uma interação com uma mensagem efêmera
         await interact.response.send_message(f'Opa {interact.user.name}, bão?')     #, ephemeral=True após àspas para mensagem privada
+        
+    @app_commands.command(description='Envia o link da playlist do Spotify')
+    async def aminho(self, interact: discord.Interaction):
+        # Responde a uma interação com o link da playlist do Spotify   
+        await interact.response.send_message(f'Aqui está o link da nossa playlist:\n```https://open.spotify.com/playlist/723PwpAlSlPF6hq7uoEZtT?si=6252377f5eb14ae8```')    
+        
 async def setup(bot):
     await bot.add_cog(Messages(bot))
