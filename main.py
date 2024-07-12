@@ -10,16 +10,18 @@ perms.members = True
 perms.message_content = True
 # .env
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv("DISCORD_TOKEN")
 # Prefixo do bot (Não altere, deixe "/" por padrão do discord)
 bot = commands.Bot(command_prefix="/", intents=perms)
 
+
 async def load_cogs():
     # Carrega os módulos (cogs) do bot a partir do diretório 'cogs'
-    for archive in os.listdir('cogs'):
-        if archive.endswith('.py'):
-            await bot.load_extension(f'cogs.{archive[:-3]}')
-        
+    for archive in os.listdir("cogs"):
+        if archive.endswith(".py"):
+            await bot.load_extension(f"cogs.{archive[:-3]}")
+
+
 @bot.command()
 async def syncro(ctx: commands.Context):
     # IDs dos membros autorizados a usar o comando
@@ -30,10 +32,11 @@ async def syncro(ctx: commands.Context):
     if ctx.author.id in allowed_ids:
         sincs = await bot.tree.sync()
         # Responde com o número total de comandos registrados
-        await ctx.reply(f'Total de comandos registrados: {len(sincs)}')
+        await ctx.reply(f"Total de comandos registrados: {len(sincs)}")
     else:
         # Responde se o autor não estiver autorizado
-        await ctx.reply('Apenas a equipe pode usar este comando!')
+        await ctx.reply("Apenas a equipe pode usar este comando!")
+
 
 # Eventos do bot
 @bot.event
@@ -49,6 +52,7 @@ async def on_ready():
     # Carrega os módulos (cogs) quando o bot está pronto
     await load_cogs()
     print("BOT ON!")
+
 
 # Inicia o bot com o token fornecido
 bot.run(TOKEN)
