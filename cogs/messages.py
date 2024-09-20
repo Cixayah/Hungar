@@ -27,7 +27,7 @@ class Messages(commands.Cog):
         # Responde a uma interação com uma mensagem efêmera
         await interact.response.send_message(
             f"Opa {interact.user.name}, bão?"
-        )  # , ephemeral=True após àspas para mensagem privada
+        )  # , ephemeral=True após àspas para mensagem privada#
 
     @app_commands.command(description="Envia o link da playlist do Spotify")
     async def aminho(self, interact: discord.Interaction):
