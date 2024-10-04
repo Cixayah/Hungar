@@ -9,7 +9,9 @@ class DeleteMessagesCog(commands.Cog):
         self.bot = bot
         super().__init__()
 
-    @app_commands.command(name="cleanup")
+    @app_commands.command(
+        name="cleanup", description="Exclui as últimas 100 mensagens do canal"
+    )
     async def delete_messages(self, interact: discord.Interaction):
         # Verifica se o usuário é o permitido
         if interact.user.id != 270943487300599808:
@@ -25,7 +27,7 @@ class DeleteMessagesCog(commands.Cog):
         channel = interact.channel
         messages_deleted = 0
 
-        async for message in channel.history(limit=50):
+        async for message in channel.history(limit=100):
             await message.delete()
             messages_deleted += 1
             await asyncio.sleep(2)  # Espera 2 segundos entre as exclusões
