@@ -17,7 +17,7 @@ class GymCalculatorCog(commands.Cog):
         altura="Sua altura em cm",  # Altura em cm
         idade="Sua idade",
         sexo="M para masculino, F para feminino",
-        nivel_atividade="Nível de atividade: sedentário, leve, moderado ou intenso",
+        nivel_atividade="Nível de atividade: nenhum, leve, moderado ou intenso",
     )
     async def gym(
         self,
@@ -37,9 +37,9 @@ class GymCalculatorCog(commands.Cog):
             return
 
         # Verifica se o nível de atividade é válido
-        if nivel_atividade.lower() not in ["sedentário", "leve", "moderado", "intenso"]:
+        if nivel_atividade.lower() not in ["nenhum", "leve", "moderado", "intenso"]:
             await interact.response.send_message(
-                "Nível de atividade inválido. Escolha entre: sedentário, leve, moderado ou intenso.",
+                "Nível de atividade inválido. Escolha entre: nenhum, leve, moderado ou intenso.",
                 ephemeral=True,
             )
             return
@@ -94,7 +94,7 @@ class GymCalculatorCog(commands.Cog):
     # Função para calcular o gasto calórico com base no nível de atividade
     def calcular_gasto_calorico(self, tmb: float, nivel_atividade: str) -> float:
         fator_atividade = {
-            "sedentário": 1.2,
+            "nenhum": 1.2,
             "leve": 1.375,
             "moderado": 1.55,
             "intenso": 1.725,
