@@ -10,17 +10,14 @@ class Messages(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, msg):
-        # Ignorar mensagens do bot para evitar loops
+        # Verifica se a mensagem foi enviada pelo bot
         if msg.author == self.bot.user:
-            return
-
-        try:
-            await msg.add_reaction("👾")
-        except discord.NotFound:
-            # Ignora se a mensagem não for encontrada
-            pass
-        except Exception as e:
-            print(f"Erro ao adicionar reação: {e}")
+            try:
+                await msg.add_reaction("👾")
+            except discord.NotFound:
+                pass
+            except Exception as e:
+                print(f"Erro ao adicionar reação: {e}")
 
     @app_commands.command(description="Responde com: Opa, [seu nome] bão?")
     async def eai(self, interact: discord.Interaction):
