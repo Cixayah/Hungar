@@ -6,6 +6,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import asyncio
 import os
+import random
 from dotenv import load_dotenv  # Importa o dotenv para carregar as variáveis do .env
 
 # Carrega as variáveis do .env
@@ -61,8 +62,10 @@ class MusicBot(commands.Cog):
             return
 
         # Adiciona todas as músicas da playlist à fila
-        for track in track_info:
-            self.queue.append(track)
+        self.queue.extend(track_info)
+
+        # Mostra o número de músicas adicionadas
+        await interaction.followup.send(f'Adicionadas à fila: **{len(track_info)}** músicas.')
 
         # Verifica se o usuário está em um canal de voz
         voice_channel = interaction.user.voice.channel if interaction.user.voice else None
@@ -103,6 +106,11 @@ class MusicBot(commands.Cog):
                     await interaction.followup.send(f'Tocando agora: **{title}**')
             else:
                 await interaction.followup.send("A fila está vazia!")
+
+    @app_commands.command(name="shuffle", description="Embaralha a fila de músicas.")
+    async def shuffle(self, interaction: discord.Interaction):
+        random.shuffle(self.queue)
+        await interaction.response.send_message("A fila foi embaralhada! 🔀")
 
     @app_commands.command(name="pause", description="Pausa a música atual.")
     async def pause(self, interaction: discord.Interaction):
