@@ -30,12 +30,22 @@ class MusicBot(commands.Cog):
         self.queue = []
 
     def get_track_info(self, spotify_url):
-        """Extrai nome e artista de um link do Spotify."""
+        """Extrai nome e artista de um link do Spotify ou de uma playlist."""
         try:
-            track = sp.track(spotify_url)
-            name = track['name']
-            artist = track['artists'][0]['name']
-            return f"{name} {artist}"
+            if "playlist" in spotify_url:
+                playlist = sp.playlist_tracks(spotify_url)
+                tracks = []
+                for item in playlist['items']:
+                    track = item['track']
+                    name = track['name']
+                    artist = track['artists'][0]['name']
+                    tracks.append(f"{name} {artist}")
+                return tracks  # Retorna uma lista de faixas
+            else:
+                track = sp.track(spotify_url)
+                name = track['name']
+                artist = track['artists'][0]['name']
+                return [f"{name} {artist}"]  # Retorna uma lista com uma única faixa
         except Exception as e:
             print(f"Erro ao buscar música no Spotify: {e}")
             return None
@@ -44,12 +54,15 @@ class MusicBot(commands.Cog):
     async def play(self, interaction: discord.Interaction, search: str):
         await interaction.response.defer()  # Adiciona defer logo no início
 
-        # Verifica se é um link do Spotify e busca a música correspondente
-        if "open.spotify.com/track" in search:
-            search = self.get_track_info(search)
-            if not search:
-                await interaction.followup.send("Não consegui buscar essa música no Spotify.", ephemeral=True)
-                return
+        # Verifica se é um link do Spotify e busca a música ou playlist correspondente
+        track_info = self.get_track_info(search)
+        if track_info is None:
+            await interaction.followup.send("Não consegui buscar essa música ou playlist no Spotify.", ephemeral=True)
+            return
+
+        # Adiciona todas as músicas da playlist à fila
+        for track in track_info:
+            self.queue.append(track)
 
         # Verifica se o usuário está em um canal de voz
         voice_channel = interaction.user.voice.channel if interaction.user.voice else None
@@ -67,16 +80,6 @@ class MusicBot(commands.Cog):
                 await interaction.followup.send(f"Erro ao conectar ao canal de voz: {e}")
                 return
 
-        # Busca a música no YouTube
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(f"ytsearch:{search}", download=False)
-            if 'entries' in info:
-                info = info['entries'][0]
-            url = info['url']
-            title = info['title']
-            self.queue.append((url, title))
-            await interaction.followup.send(f'Adicionado à fila: **{title}**')
-
         # Toca a música se nada estiver tocando
         if not interaction.guild.voice_client.is_playing():
             await self.play_next(interaction)
@@ -84,12 +87,20 @@ class MusicBot(commands.Cog):
     async def play_next(self, interaction: discord.Interaction):
         if interaction.guild.voice_client and interaction.guild.voice_client.is_connected():
             if self.queue:
-                url, title = self.queue.pop(0)
-                source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS)
-                interaction.guild.voice_client.play(
-                    source, after=lambda _: self.bot.loop.create_task(self.play_next(interaction))
-                )
-                await interaction.followup.send(f'Tocando agora: **{title}**')
+                # A primeira entrada da fila é uma string com "nome artista"
+                track_info = self.queue.pop(0)
+                # Aqui você deve converter o "nome artista" em um link do YouTube
+                with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+                    info = ydl.extract_info(f"ytsearch:{track_info}", download=False)
+                    if 'entries' in info:
+                        info = info['entries'][0]
+                    url = info['url']
+                    title = info['title']
+                    source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS)
+                    interaction.guild.voice_client.play(
+                        source, after=lambda _: self.bot.loop.create_task(self.play_next(interaction))
+                    )
+                    await interaction.followup.send(f'Tocando agora: **{title}**')
             else:
                 await interaction.followup.send("A fila está vazia!")
 
