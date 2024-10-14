@@ -17,7 +17,7 @@ bot = commands.Bot(command_prefix="/", intents=perms)
 
 async def load_cogs():
     # Carrega os módulos (cogs) do bot a partir do diretório 'cogs'
-    for archive in os.listdir("cogs"):
+    for archive in os.listdir("cogs/"):
         if archive.endswith(".py"):
             await bot.load_extension(f"cogs.{archive[:-3]}")
 
