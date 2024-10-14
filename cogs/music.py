@@ -7,7 +7,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import asyncio
 import os
 import random
-from dotenv import load_dotenv  # Importa o dotenv para carregar as variáveis do .env
+from dotenv import load_dotenv
 
 # Carrega as variáveis do .env
 load_dotenv()
@@ -30,14 +30,14 @@ class MusicBot(commands.Cog):
         self.bot = bot
         self.queue = []
 
-    def get_track_info(self, spotify_url):
-        """Extrai nome e artista de um link do Spotify ou de uma playlist."""
+    def get_track_info(self, url):
+        """Extrai nome e artista de um link do Spotify ou de uma playlist, ou usa o link do YouTube diretamente."""
         try:
-            if "playlist" in spotify_url:
+            if "playlist" in url:
                 tracks = []
                 offset = 0
                 while True:
-                    playlist = sp.playlist_tracks(spotify_url, limit=100, offset=offset)
+                    playlist = sp.playlist_tracks(url, limit=100, offset=offset)
                     if not playlist['items']:
                         break
                     for item in playlist['items']:
@@ -45,25 +45,28 @@ class MusicBot(commands.Cog):
                         name = track['name']
                         artist = track['artists'][0]['name']
                         tracks.append(f"{name} {artist}")
-                    offset += 100  # Aumenta o offset para buscar as próximas faixas
-                return tracks  # Retorna uma lista de faixas
-            else:
-                track = sp.track(spotify_url)
+                    offset += 100
+                return tracks
+            elif "open.spotify.com" in url:
+                track = sp.track(url)
                 name = track['name']
                 artist = track['artists'][0]['name']
-                return [f"{name} {artist}"]  # Retorna uma lista com uma única faixa
+                return [f"{name} {artist}"]
+            else:
+                # Se não for Spotify, assume que é um link do YouTube
+                return [url]  # Retorna o URL do YouTube diretamente
         except Exception as e:
-            print(f"Erro ao buscar música no Spotify: {e}")
+            print(f"Erro ao buscar música: {e}")
             return None
 
     @app_commands.command(name="play", description="Reproduz uma música do YouTube ou Spotify.")
     async def play(self, interaction: discord.Interaction, search: str):
-        await interaction.response.defer()  # Adiciona defer logo no início
+        await interaction.response.defer()
 
-        # Verifica se é um link do Spotify e busca a música ou playlist correspondente
+        # Verifica se é um link do Spotify ou YouTube e busca a música ou playlist correspondente
         track_info = self.get_track_info(search)
         if track_info is None:
-            await interaction.followup.send("Não consegui buscar essa música ou playlist no Spotify.", ephemeral=True)
+            await interaction.followup.send("Não consegui buscar essa música ou playlist.", ephemeral=True)
             return
 
         # Adiciona todas as músicas da playlist à fila
@@ -95,11 +98,10 @@ class MusicBot(commands.Cog):
     async def play_next(self, interaction: discord.Interaction):
         if interaction.guild.voice_client and interaction.guild.voice_client.is_connected():
             if self.queue:
-                # A primeira entrada da fila é uma string com "nome artista"
                 track_info = self.queue.pop(0)
-                # Aqui você deve converter o "nome artista" em um link do YouTube
+                url = track_info if track_info.startswith('http') else f"ytsearch:{track_info}"
                 with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                    info = ydl.extract_info(f"ytsearch:{track_info}", download=False)
+                    info = ydl.extract_info(url, download=False)
                     if 'entries' in info:
                         info = info['entries'][0]
                     url = info['url']
