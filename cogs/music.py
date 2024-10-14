@@ -34,13 +34,18 @@ class MusicBot(commands.Cog):
         """Extrai nome e artista de um link do Spotify ou de uma playlist."""
         try:
             if "playlist" in spotify_url:
-                playlist = sp.playlist_tracks(spotify_url)
                 tracks = []
-                for item in playlist['items']:
-                    track = item['track']
-                    name = track['name']
-                    artist = track['artists'][0]['name']
-                    tracks.append(f"{name} {artist}")
+                offset = 0
+                while True:
+                    playlist = sp.playlist_tracks(spotify_url, limit=100, offset=offset)
+                    if not playlist['items']:
+                        break
+                    for item in playlist['items']:
+                        track = item['track']
+                        name = track['name']
+                        artist = track['artists'][0]['name']
+                        tracks.append(f"{name} {artist}")
+                    offset += 100  # Aumenta o offset para buscar as próximas faixas
                 return tracks  # Retorna uma lista de faixas
             else:
                 track = sp.track(spotify_url)
