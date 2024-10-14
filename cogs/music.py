@@ -141,6 +141,15 @@ class MusicBot(commands.Cog):
         else:
             await interaction.response.send_message("Não há música tocando no momento.")
 
+    @app_commands.command(name="stop", description="Para a música atual e limpa a fila.")
+    async def stop(self, interaction: discord.Interaction):
+        if interaction.guild.voice_client:
+            interaction.guild.voice_client.stop()  # Para a música atual
+            self.queue.clear()  # Limpa a fila
+            await interaction.response.send_message("Música parada e fila limpa! 🛑")
+        else:
+            await interaction.response.send_message("O bot não está tocando música no momento.")
+
     @app_commands.command(name="leave", description="Remove o bot do canal de voz.")
     async def leave(self, interaction: discord.Interaction):
         if interaction.guild.voice_client:
