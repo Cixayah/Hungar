@@ -126,7 +126,7 @@ class MusicBot(commands.Cog):
             await interaction.response.send_message("Música pausada ⏸️")
         else:
             await interaction.response.send_message("Não há música tocando no momento.")
-
+ 
     @app_commands.command(name="resume", description="Retoma a música pausada.")
     async def resume(self, interaction: discord.Interaction):
         if interaction.guild.voice_client and interaction.guild.voice_client.is_paused():
