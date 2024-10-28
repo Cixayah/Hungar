@@ -4,6 +4,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
+
 # Permissões do Bot
 perms = discord.Intents.default()
 perms.members = True

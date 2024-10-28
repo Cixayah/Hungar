@@ -22,7 +22,8 @@ FFMPEG_OPTIONS = {
 YDL_OPTIONS = {
     'format': 'bestaudio',
     'noplaylist': True,
-    'socket_timeout': 30  # Aumentado o timeout para 30 segundos
+    'socket_timeout': 60,
+    'rm-cache-dir': True
 }
 
 # Substitua pelos seus CLIENT_ID e CLIENT_SECRET
@@ -72,6 +73,7 @@ class MusicBot(commands.Cog):
     @staticmethod
     def get_track_info(url):
         """Extrai nome e artista de um link do Spotify ou de uma playlist, ou usa o link do YouTube diretamente."""
+        yt_dlp.YoutubeDL().cache.remove()
         try:
             if "playlist" in url:
                 tracks = []
@@ -149,9 +151,13 @@ class MusicBot(commands.Cog):
                     interaction.guild.voice_client.play(
                         source, after=lambda _: self.bot.loop.create_task(self.play_next(interaction))
                     )
-                    await interaction.followup.send(f'Tocando agora: **{title}**')
+                    # Enviar mensagem de "tocando agora" usando um try-except para capturar erros
+                    try:
+                        await interaction.channel.send(f'Tocando agora: **{title}**')
+                    except discord.HTTPException as e:
+                        print(f"Erro ao enviar mensagem: {e}")
             else:
-                await interaction.followup.send("A fila está vazia!")
+                await interaction.channel.send("A fila está vazia!")
 
     @app_commands.command(name="shuffle", description="Embaralha a fila de músicas.")
     async def shuffle(self, interaction: discord.Interaction):
