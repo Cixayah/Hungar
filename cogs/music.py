@@ -8,12 +8,22 @@ import asyncio
 import os
 import random
 from dotenv import load_dotenv
+from discord.ui import View, Button
 
 # Carrega as variáveis do .env
 load_dotenv()
 
-FFMPEG_OPTIONS = {'options': '-vn'}
-YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': True}
+# Configurações do FFmpeg para reconexão
+FFMPEG_OPTIONS = {
+    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+}
+
+# Configurações do yt_dlp com aumento do timeout de conexão
+YDL_OPTIONS = {
+    'format': 'bestaudio',
+    'noplaylist': True,
+    'socket_timeout': 30  # Aumentado o timeout para 30 segundos
+}
 
 # Substitua pelos seus CLIENT_ID e CLIENT_SECRET
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
@@ -25,12 +35,42 @@ sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_secret=SPOTIFY_CLIENT_SECRET
 ))
 
+class QueueView(View):
+    def __init__(self, bot, interaction):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.interaction = interaction
+        self.page = 0
+
+    async def update_message(self):
+        start = self.page * 10
+        end = start + 10
+        tracks = self.bot.get_cog('MusicBot').queue[start:end]
+        total_pages = (len(self.bot.get_cog('MusicBot').queue) - 1) // 10 + 1
+
+        queue_message = "\n".join([f"{i+1}. {track}" for i, track in enumerate(tracks, start=start)])
+        content = f"**Fila de músicas:**\n{queue_message}\n\nPágina {self.page + 1}/{total_pages}"
+        await self.interaction.edit_original_response(content=content, view=self)
+
+    @discord.ui.button(label="Anterior", style=discord.ButtonStyle.primary)
+    async def previous_button(self, interaction: discord.Interaction, button: Button):
+        if self.page > 0:
+            self.page -= 1
+            await self.update_message()
+
+    @discord.ui.button(label="Próxima", style=discord.ButtonStyle.primary)
+    async def next_button(self, interaction: discord.Interaction, button: Button):
+        if (self.page + 1) * 10 < len(self.bot.get_cog('MusicBot').queue):
+            self.page += 1
+            await self.update_message()
+
 class MusicBot(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.queue = []
 
-    def get_track_info(self, url):
+    @staticmethod
+    def get_track_info(url):
         """Extrai nome e artista de um link do Spotify ou de uma playlist, ou usa o link do YouTube diretamente."""
         try:
             if "playlist" in url:
@@ -62,25 +102,20 @@ class MusicBot(commands.Cog):
     @app_commands.command(name="play", description="Reproduz uma música do YouTube ou Spotify.")
     async def play(self, interaction: discord.Interaction, search: str):
         await interaction.response.defer()
-
         # Verifica se é um link do Spotify ou YouTube e busca a música ou playlist correspondente
         track_info = self.get_track_info(search)
         if track_info is None:
             await interaction.followup.send("Não consegui buscar essa música ou playlist.", ephemeral=True)
             return
-
         # Adiciona todas as músicas da playlist à fila
         self.queue.extend(track_info)
-
         # Mostra o número de músicas adicionadas
         await interaction.followup.send(f'Adicionadas à fila: **{len(track_info)}** músicas.')
-
         # Verifica se o usuário está em um canal de voz
         voice_channel = interaction.user.voice.channel if interaction.user.voice else None
         if not voice_channel:
             await interaction.followup.send("Você precisa estar em um canal de voz!", ephemeral=True)
             return
-
         # Conecta ao canal de voz, se necessário
         if not interaction.guild.voice_client:
             try:
@@ -88,12 +123,16 @@ class MusicBot(commands.Cog):
                 await asyncio.sleep(1)
                 await interaction.followup.send("Conectado ao canal de voz!")
             except Exception as e:
-                await interaction.followup.send(f"Erro ao conectar ao canal de voz: {e}")
+                await interaction.followup.send(f"Erro ao conectar ao canal de voz: {e }")
                 return
-
         # Toca a música se nada estiver tocando
         if not interaction.guild.voice_client.is_playing():
             await self.play_next(interaction)
+
+    async def handle_error(self, error, interaction):
+        if error:
+            print(f"Erro durante a reprodução: {error}")
+        await self.play_next(interaction)
 
     async def play_next(self, interaction: discord.Interaction):
         if interaction.guild.voice_client and interaction.guild.voice_client.is_connected():
@@ -117,7 +156,7 @@ class MusicBot(commands.Cog):
     @app_commands.command(name="shuffle", description="Embaralha a fila de músicas.")
     async def shuffle(self, interaction: discord.Interaction):
         random.shuffle(self.queue)
-        await interaction.response.send_message("A fila foi embaralhada! 🔀")
+        await interaction.response.send_message("A fila foi embaralhada!")
 
     @app_commands.command(name="pause", description="Pausa a música atual.")
     async def pause(self, interaction: discord.Interaction):
@@ -126,7 +165,7 @@ class MusicBot(commands.Cog):
             await interaction.response.send_message("Música pausada ⏸️")
         else:
             await interaction.response.send_message("Não há música tocando no momento.")
- 
+
     @app_commands.command(name="resume", description="Retoma a música pausada.")
     async def resume(self, interaction: discord.Interaction):
         if interaction.guild.voice_client and interaction.guild.voice_client.is_paused():
@@ -148,7 +187,7 @@ class MusicBot(commands.Cog):
         if interaction.guild.voice_client:
             interaction.guild.voice_client.stop()  # Para a música atual
             self.queue.clear()  # Limpa a fila
-            await interaction.response.send_message("Música parada e fila limpa! 🛑")
+            await interaction.response.send_message("Música parada e fila limpa!")
         else:
             await interaction.response.send_message("O bot não está tocando música no momento.")
 
@@ -156,9 +195,15 @@ class MusicBot(commands.Cog):
     async def leave(self, interaction: discord.Interaction):
         if interaction.guild.voice_client:
             await interaction.guild.voice_client.disconnect()
-            await interaction.response.send_message("Saí do canal de voz! 👋")
+            await interaction.response.send_message("Saí do canal de voz!")
         else:
             await interaction.response.send_message("O bot não está em um canal de voz.")
+
+    @app_commands.command(name="queue", description="Exibe a fila de músicas.")
+    async def queue(self, interaction: discord.Interaction):
+        view = QueueView(self.bot, interaction)
+        await interaction.response.send_message(content="Aqui está a fila de músicas.", view=view, ephemeral=True)
+        await view.update_message()  # Atualiza a mensagem imediatamente após o envio
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(MusicBot(bot))
