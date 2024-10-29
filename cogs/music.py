@@ -15,7 +15,7 @@ load_dotenv()
 
 # Configurações do FFmpeg para reconexão
 FFMPEG_OPTIONS = {
-    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -http_persistent 1 -reconnect_at_eof 1 -fflags +genpts -use_wallclock_as_timestamps 1'
 }
 
 # Configurações do yt_dlp com aumento do timeout de conexão
