@@ -40,7 +40,7 @@ class DeleteMessagesCog(commands.Cog):
         async for message in channel.history(limit=amount):
             await message.delete()
             messages_deleted += 1
-            await asyncio.sleep(2)  # Espera 2 segundos entre as exclusões
+            await asyncio.sleep(1)  # Espera 2 segundos entre as exclusões
 
         await interact.followup.send(
             f"{messages_deleted} mensagens foram excluídas com sucesso.", ephemeral=True
