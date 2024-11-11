@@ -237,6 +237,29 @@ class MusicBot(commands.Cog):
             
         random.shuffle(self.queue)
         await interaction.response.send_message("A fila foi embaralhada!")
+        
+    @app_commands.command(name="invertqueue", description="Toca a fila de músicas da última até a primeira.")
+    async def invert_queue(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        
+        if not self.queue:
+            await interaction.followup.send("A fila está vazia!", ephemeral=True)
+            return
+            
+        try:
+            await self.ensure_voice_connection(interaction)
+            
+            self.queue = self.queue[::-1]
+            await interaction.followup.send(f"A fila foi invertida. Agora tocando da última música até a primeira.")
+            
+            if not self.is_playing:
+                await self.play_next(interaction)
+                
+        except ValueError as ve:
+            await interaction.followup.send(str(ve), ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"Ocorreu um erro: {str(e)}")
+            print(f"Erro detalhado: {e}")    
 
     @app_commands.command(name="pause", description="Pausa a música atual.")
     async def pause(self, interaction: discord.Interaction):
