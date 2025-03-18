@@ -11,14 +11,14 @@ class DeleteMessagesCog(commands.Cog):
 
     @app_commands.command(
         name="cleanup",
-        description="Exclui um número específico de mensagens do canal (máximo 100)",
+        description="Exclui um número específico de mensagens do canal (máximo 1000)",
     )
-    @app_commands.describe(amount="Número de mensagens a serem excluídas (máximo 100)")
+    @app_commands.describe(amount="Número de mensagens a serem excluídas (máximo 1000)")
     async def delete_messages(self, interact: discord.Interaction, amount: int):
-        # Limita o número de mensagens a 100
-        if amount > 100:
+        # Limita o número de mensagens a 1000
+        if amount > 1000:
             await interact.response.send_message(
-                "O número máximo de mensagens que podem ser excluídas é 100.",
+                "O número máximo de mensagens que podem ser excluídas é 1000.",
                 ephemeral=True,
             )
             return
