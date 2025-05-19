@@ -131,7 +131,7 @@ env.bak/
 venv.bak/
 
 #IDE
-.vscode
+#.vscode
 .idea
 .gitignore
 
