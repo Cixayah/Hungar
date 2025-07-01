@@ -18,54 +18,69 @@ class Lol(commands.Cog):
     async def get_puuid(self, name: str, tag: str):
         """Helper function to get PUUID from Riot ID"""
         headers = {"X-Riot-Token": self.api_key}
-        account_url = f"https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}"
+        # Encode the name to handle special characters
+        encoded_name = requests.utils.quote(name)
+        encoded_tag = requests.utils.quote(tag)
+        account_url = f"https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{encoded_name}/{encoded_tag}"
         
         try:
-            account_response = requests.get(account_url, headers=headers, timeout=10)
+            account_response = requests.get(account_url, headers=headers, timeout=15)
+            
             if account_response.status_code == 200:
-                return account_response.json().get("puuid")
+                data = account_response.json()
+                return data.get("puuid")
             elif account_response.status_code == 404:
                 return None
             else:
-                print(f"Error getting PUUID: {account_response.status_code}")
+                print(f"Error getting PUUID: {account_response.status_code} - {account_response.text}")
                 return None
         except requests.exceptions.RequestException as e:
             print(f"Request exception: {e}")
             return None
 
-    # /elo command
+    # /elo command - VERSÃO CORRIGIDA COM ENDPOINT CORRETO
     @app_commands.command(name="elo", description="Mostra o elo do jogador (Ex: Cix + WTLE)")
     @app_commands.describe(name="Nome do jogador", tag="Hashtag do jogador (sem o #)")
     async def elo(self, interaction: discord.Interaction, name: str, tag: str):
         await interaction.response.defer()
+        
+        # Verificar se a API key existe
+        if not self.api_key:
+            await interaction.followup.send("❌ API key da Riot não configurada.")
+            return
+            
         headers = {"X-Riot-Token": self.api_key}
 
-        # Step 1: get PUUID
-        puuid = await self.get_puuid(name, tag)
-        if not puuid:
-            await interaction.followup.send("❌ Riot ID não encontrado. Verifique se o nome e tag estão corretos.")
-            return
-
         try:
-            # Step 2: get summoner info
+            # Step 1: get PUUID
+            puuid = await self.get_puuid(name, tag)
+            if not puuid:
+                await interaction.followup.send(f"❌ Riot ID `{name}#{tag}` não encontrado. Verifique se o nome e tag estão corretos.")
+                return
+
+            # Step 2: get summoner info (para pegar o nome e level)
             summoner_url = f"https://br1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/{puuid}"
-            summoner_response = requests.get(summoner_url, headers=headers, timeout=10)
+            summoner_response = requests.get(summoner_url, headers=headers, timeout=15)
             
-            if summoner_response.status_code != 200:
-                await interaction.followup.send("⚠️ Erro ao buscar informações do invocador. Tente novamente.")
+            if summoner_response.status_code == 404:
+                await interaction.followup.send("❌ Jogador não encontrado no servidor brasileiro (BR1).")
+                return
+            elif summoner_response.status_code != 200:
+                print(f"Summoner error: {summoner_response.text}")
+                await interaction.followup.send(f"⚠️ Erro ao buscar informações do invocador (Status: {summoner_response.status_code}). Tente novamente.")
                 return
                 
             summoner = summoner_response.json()
-            summoner_id = summoner.get("id")
             summoner_name = summoner.get("name", f"{name}#{tag}")
             summoner_level = summoner.get("summonerLevel", "N/A")
 
-            # Step 3: get rank info
-            rank_url = f"https://br1.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}"
-            rank_response = requests.get(rank_url, headers=headers, timeout=10)
+            # Step 3: get rank info usando PUUID diretamente
+            rank_url = f"https://br1.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}"
+            rank_response = requests.get(rank_url, headers=headers, timeout=15)
             
             if rank_response.status_code != 200:
-                await interaction.followup.send("⚠️ Erro ao buscar dados de elo. Tente novamente.")
+                print(f"Rank error: {rank_response.text}")
+                await interaction.followup.send(f"⚠️ Erro ao buscar dados de elo (Status: {rank_response.status_code}). Tente novamente.")
                 return
                 
             rank_data = rank_response.json()
@@ -85,18 +100,24 @@ class Lol(commands.Cog):
                 )
             else:
                 # Process ranked queues
+                ranked_found = False
                 for entry in rank_data:
                     queue_type = entry.get("queueType", "")
                     
                     if queue_type == "RANKED_SOLO_5x5":
                         queue_name = "🏆 Solo/Duo"
+                        ranked_found = True
                     elif queue_type == "RANKED_FLEX_SR":
                         queue_name = "🤝 Flex 5v5"
+                        ranked_found = True
+                    elif queue_type == "RANKED_FLEX_TT":
+                        queue_name = "🎯 Flex 3v3"
+                        ranked_found = True
                     else:
-                        queue_name = f"🎯 {queue_type}"
+                        continue  # Skip unknown queue types
                     
                     tier = entry.get("tier", "").capitalize()
-                    division = entry.get("rank", "")
+                    rank = entry.get("rank", "")
                     lp = entry.get("leaguePoints", 0)
                     wins = entry.get("wins", 0)
                     losses = entry.get("losses", 0)
@@ -104,20 +125,52 @@ class Lol(commands.Cog):
                     total_games = wins + losses
                     winrate = round((wins / total_games) * 100) if total_games > 0 else 0
                     
-                    rank_info = f"**{tier} {division}** - {lp} LP\n"
+                    # Handle special tiers (Master, Grandmaster, Challenger não têm divisões)
+                    if tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER"]:
+                        rank_info = f"**{tier}** - {lp} LP\n"
+                    else:
+                        rank_info = f"**{tier} {rank}** - {lp} LP\n"
+                    
                     rank_info += f"**W/L:** {wins}W/{losses}L ({winrate}% WR)"
+                    
+                    # Add special badges
+                    badges = []
+                    if entry.get("hotStreak", False):
+                        badges.append("🔥")
+                    if entry.get("veteran", False):
+                        badges.append("⭐")
+                    if entry.get("freshBlood", False):
+                        badges.append("🆕")
+                    
+                    if badges:
+                        rank_info += f"\n{' '.join(badges)}"
                     
                     embed.add_field(
                         name=queue_name,
                         value=rank_info,
                         inline=True
                     )
+                
+                if not ranked_found:
+                    embed.add_field(
+                        name="📊 Rank Competitivo", 
+                        value="Ainda não possui rank competitivo", 
+                        inline=False
+                    )
 
+            # Add footer with additional info
+            embed.set_footer(text=f"Riot ID: {name}#{tag}")
+            
             await interaction.followup.send(embed=embed)
             
+        except requests.exceptions.Timeout:
+            await interaction.followup.send("⏰ Timeout na conexão com a API da Riot. Tente novamente.")
         except requests.exceptions.RequestException as e:
             await interaction.followup.send("⚠️ Erro de conexão com a API da Riot. Tente novamente.")
             print(f"Request error in /elo: {e}")
+        except KeyError as e:
+            await interaction.followup.send("⚠️ Erro ao processar dados da API. Tente novamente.")
+            print(f"KeyError in /elo: {e}")
         except Exception as e:
             await interaction.followup.send("⚠️ Erro inesperado. Tente novamente.")
             print(f"Unexpected error in /elo: {e}")
@@ -127,6 +180,11 @@ class Lol(commands.Cog):
     @app_commands.describe(name="Nome do jogador", tag="Hashtag do jogador (sem o #)")
     async def stats(self, interaction: discord.Interaction, name: str, tag: str):
         await interaction.response.defer()
+        
+        if not self.api_key:
+            await interaction.followup.send("❌ API key da Riot não configurada.")
+            return
+            
         headers = {"X-Riot-Token": self.api_key}
 
         # Get PUUID
@@ -138,7 +196,7 @@ class Lol(commands.Cog):
         try:
             # Get last 5 match IDs
             matches_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=5"
-            matches_response = requests.get(matches_url, headers=headers, timeout=10)
+            matches_response = requests.get(matches_url, headers=headers, timeout=15)
             
             if matches_response.status_code != 200:
                 await interaction.followup.send("⚠️ Erro ao buscar histórico de partidas.")
@@ -192,7 +250,7 @@ class Lol(commands.Cog):
                     break
                     
                 match_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/{match_id}"
-                match_response = requests.get(match_url, headers=headers, timeout=10)
+                match_response = requests.get(match_url, headers=headers, timeout=15)
                 
                 if match_response.status_code != 200:
                     continue
@@ -253,6 +311,8 @@ class Lol(commands.Cog):
 
             await interaction.followup.send(embed=embed)
             
+        except requests.exceptions.Timeout:
+            await interaction.followup.send("⏰ Timeout na conexão com a API da Riot. Tente novamente.")
         except requests.exceptions.RequestException as e:
             await interaction.followup.send("⚠️ Erro de conexão com a API da Riot. Tente novamente.")
             print(f"Request error in /stats: {e}")
