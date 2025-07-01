@@ -85,37 +85,58 @@ class Lol(commands.Cog):
                 
             rank_data = rank_response.json()
             
-            # Create embed for better formatting
+            # Determine embed color based on highest rank
+            embed_color = 0x0099ff  # Default blue
+            highest_tier = ""
+            
+            if rank_data:
+                for entry in rank_data:
+                    tier = entry.get("tier", "").upper()
+                    if tier == "CHALLENGER":
+                        embed_color = 0xF0E68C  # Gold for Challenger
+                        highest_tier = "CHALLENGER"
+                        break
+                    elif tier == "GRANDMASTER":
+                        embed_color = 0xFF6347  # Red for Grandmaster
+                        highest_tier = "GRANDMASTER"
+                    elif tier == "MASTER" and highest_tier != "GRANDMASTER":
+                        embed_color = 0x9932CC  # Purple for Master
+                        highest_tier = "MASTER"
+                    elif tier in ["DIAMOND", "EMERALD"] and highest_tier not in ["MASTER", "GRANDMASTER"]:
+                        embed_color = 0x00CED1  # Cyan for Diamond/Emerald
+                        highest_tier = tier
+            
+            # Create embed with better formatting
             embed = discord.Embed(
-                title=f"🎮 {summoner_name}",
-                color=0x0099ff,
-                description=f"**Nível:** {summoner_level}"
+                color=embed_color
+            )
+            
+            # Title with emoji based on rank
+            rank_emoji = "👑" if highest_tier == "CHALLENGER" else "💎" if highest_tier in ["GRANDMASTER", "MASTER"] else "🎮"
+            embed.set_author(
+                name=f"{rank_emoji} {summoner_name}",
+                icon_url="https://cdn.discordapp.com/attachments/123456789/123456789/lol_icon.png"
+            )
+            
+            embed.add_field(
+                name="📊 Informações Gerais",
+                value=f"**Nível:** {summoner_level}\n**Riot ID:** {name}#{tag}",
+                inline=False
             )
             
             if not rank_data:
                 embed.add_field(
-                    name="📊 Rank Competitivo", 
-                    value="Ainda não possui rank competitivo", 
+                    name="🏅 Ranks Competitivos", 
+                    value="```\n❌ Ainda não possui rank competitivo\n```", 
                     inline=False
                 )
             else:
-                # Process ranked queues
-                ranked_found = False
+                # Process ranked queues with better formatting
+                solo_info = ""
+                flex_info = ""
+                
                 for entry in rank_data:
                     queue_type = entry.get("queueType", "")
-                    
-                    if queue_type == "RANKED_SOLO_5x5":
-                        queue_name = "🏆 Solo/Duo"
-                        ranked_found = True
-                    elif queue_type == "RANKED_FLEX_SR":
-                        queue_name = "🤝 Flex 5v5"
-                        ranked_found = True
-                    elif queue_type == "RANKED_FLEX_TT":
-                        queue_name = "🎯 Flex 3v3"
-                        ranked_found = True
-                    else:
-                        continue  # Skip unknown queue types
-                    
                     tier = entry.get("tier", "").capitalize()
                     rank = entry.get("rank", "")
                     lp = entry.get("leaguePoints", 0)
@@ -125,15 +146,29 @@ class Lol(commands.Cog):
                     total_games = wins + losses
                     winrate = round((wins / total_games) * 100) if total_games > 0 else 0
                     
-                    # Handle special tiers (Master, Grandmaster, Challenger não têm divisões)
+                    # Get tier emoji
+                    tier_emojis = {
+                        "CHALLENGER": "👑",
+                        "GRANDMASTER": "🏆",
+                        "MASTER": "🌟",
+                        "DIAMOND": "💎",
+                        "EMERALD": "🟢",
+                        "PLATINUM": "⚪",
+                        "GOLD": "🟡",
+                        "SILVER": "⚪",  
+                        "BRONZE": "🟤",   
+                        "IRON": "⚫"         
+                    }
+                    
+                    tier_emoji = tier_emojis.get(tier.upper(), "🎯")
+                    
+                    # Handle special tiers
                     if tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER"]:
-                        rank_info = f"**{tier}** - {lp} LP\n"
+                        rank_display = f"{tier_emoji} **{tier}**"
                     else:
-                        rank_info = f"**{tier} {rank}** - {lp} LP\n"
+                        rank_display = f"{tier_emoji} **{tier} {rank}**"
                     
-                    rank_info += f"**W/L:** {wins}W/{losses}L ({winrate}% WR)"
-                    
-                    # Add special badges
+                    # Special badges
                     badges = []
                     if entry.get("hotStreak", False):
                         badges.append("🔥")
@@ -142,24 +177,41 @@ class Lol(commands.Cog):
                     if entry.get("freshBlood", False):
                         badges.append("🆕")
                     
-                    if badges:
-                        rank_info += f"\n{' '.join(badges)}"
+                    badge_text = " " + "".join(badges) if badges else ""
                     
+                    rank_text = f"{rank_display}{badge_text}\n"
+                    rank_text += f"**LP:** {lp} | **W/L:** {wins}/{losses} ({winrate}%)"
+                    
+                    if queue_type == "RANKED_SOLO_5x5":
+                        solo_info = rank_text
+                    elif queue_type == "RANKED_FLEX_SR":
+                        flex_info = rank_text
+                
+                # Add rank fields
+                if solo_info:
                     embed.add_field(
-                        name=queue_name,
-                        value=rank_info,
+                        name="🏆 Solo/Duo",
+                        value=solo_info,
                         inline=True
                     )
                 
-                if not ranked_found:
+                if flex_info:
                     embed.add_field(
-                        name="📊 Rank Competitivo", 
-                        value="Ainda não possui rank competitivo", 
-                        inline=False
+                        name="🤝 Flex 5v5",
+                        value=flex_info,
+                        inline=True
                     )
-
-            # Add footer with additional info
-            embed.set_footer(text=f"Riot ID: {name}#{tag}")
+                
+                # Add empty field for spacing if both exist
+                if solo_info and flex_info:
+                    embed.add_field(name="\u200b", value="\u200b", inline=True)
+            
+            # Footer with timestamp
+            embed.set_footer(
+                text="Dados da Riot Games API",
+                icon_url="https://cdn.discordapp.com/attachments/123456789/123456789/riot_icon.png"
+            )
+            embed.timestamp = discord.utils.utcnow()
             
             await interaction.followup.send(embed=embed)
             
@@ -238,8 +290,11 @@ class Lol(commands.Cog):
             }
 
             embed = discord.Embed(
-                title=f"📊 Últimas partidas de {name}#{tag}",
-                color=0x00ff00
+                color=0x00ff99
+            )
+            embed.set_author(
+                name=f"📊 Histórico de Partidas",
+                icon_url="https://cdn.discordapp.com/attachments/123456789/123456789/match_icon.png"
             )
 
             kda_list = []
@@ -279,15 +334,23 @@ class Lol(commands.Cog):
                         kda_value = (kills + assists) / deaths if deaths > 0 else (kills + assists)
                         kda_list.append(kda_value)
 
-                        # Format match info
-                        emoji = "✅" if win else "❌"
-                        result_text = "Vitória" if win else "Derrota"
+                        # Get champion emoji (you can expand this)
+                        champion_emojis = {
+                            "Jinx": "🔫", "Yasuo": "⚔️", "Lux": "✨", "Zed": "🗡️",
+                            "Ahri": "🦊", "Thresh": "⛓️", "Lee Sin": "👊", "Katarina": "🗡️",
+                            "Vayne": "🏹", "Azir": "🏺", "Syndra": "🔮", "Jhin": "🎭"
+                        }
+                        champ_emoji = champion_emojis.get(champion, "⚔️")
                         
-                        match_info = f"{emoji} **{champion}**\n"
-                        match_info += f"**KDA:** {kills}/{deaths}/{assists} ({kda_value:.2f})\n"
-                        match_info += f"**Resultado:** {result_text}\n"
-                        match_info += f"**Modo:** {queue_name}\n"
-                        match_info += f"**Duração:** {duration_minutes}min"
+                        # Format match info with better layout
+                        emoji = "🟢" if win else "🔴"
+                        result_text = "VITÓRIA" if win else "DERROTA"
+                        
+                        match_info = f"{emoji} **{result_text}**\n"
+                        match_info += f"{champ_emoji} **{champion}**\n"
+                        match_info += f"📊 **{kills}/{deaths}/{assists}** (KDA: {kda_value:.1f})\n"
+                        match_info += f"🎮 {queue_name}\n"
+                        match_info += f"⏱️ {duration_minutes}min"
                         
                         embed.add_field(
                             name=f"Partida {matches_processed + 1}",
