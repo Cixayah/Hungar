@@ -111,12 +111,7 @@ class Lol(commands.Cog):
                 color=embed_color
             )
             
-            # Title with emoji based on rank
-            rank_emoji = "👑" if highest_tier == "CHALLENGER" else "💎" if highest_tier in ["GRANDMASTER", "MASTER"] else "🎮"
-            embed.set_author(
-                name=f"{rank_emoji} {summoner_name}",
-                icon_url="https://cdn.discordapp.com/attachments/123456789/123456789/lol_icon.png"
-            )
+
             
             embed.add_field(
                 name="📊 Informações Gerais",
@@ -227,7 +222,7 @@ class Lol(commands.Cog):
             await interaction.followup.send("⚠️ Erro inesperado. Tente novamente.")
             print(f"Unexpected error in /elo: {e}")
 
-    # /stats command
+    # /stats command - Versão minimalista
     @app_commands.command(name="stats", description="Mostra últimas 5 partidas com KDA e modo.")
     @app_commands.describe(name="Nome do jogador", tag="Hashtag do jogador (sem o #)")
     async def stats(self, interaction: discord.Interaction, name: str, tag: str):
@@ -260,50 +255,26 @@ class Lol(commands.Cog):
                 await interaction.followup.send("📊 Nenhuma partida recente encontrada.")
                 return
 
-            # Enhanced mode mapping
+            # Simple queue mapping
             queue_map = {
-                # Ranked queues
-                420: "Solo/Duo",
-                440: "Flex 5v5",
-                470: "Flex 3v3",
-                
-                # Normal queues
-                400: "Normal Draft",
-                430: "Normal Blind",
-                
-                # Special modes
-                450: "ARAM",
-                900: "URF",
-                1020: "One For All",
-                1300: "Nexus Blitz",
-                1400: "Ultimate Spellbook",
-                1700: "Arena",
-                
-                # Featured modes
-                76: "URF",
-                318: "ARURF",
-                325: "All Random",
-                
-                # Others
-                0: "Custom",
-                2000: "Tutorial"
+                420: "Solo/Duo", 440: "Flex", 470: "Flex 3v3",
+                400: "Normal", 430: "Blind", 450: "ARAM",
+                900: "URF", 1020: "One For All", 1300: "Nexus Blitz",
+                1400: "Spellbook", 1700: "Arena"
             }
 
+            # Create clean embed
             embed = discord.Embed(
-                color=0x00ff99
-            )
-            embed.set_author(
-                name=f"📊 Histórico de Partidas",
-                icon_url="https://cdn.discordapp.com/attachments/123456789/123456789/match_icon.png"
+                title=f"{name}#{tag}",
+                color=0x2f3136  # Discord dark theme color
             )
 
+            matches_data = []
             kda_list = []
-            matches_processed = 0
+            wins = 0
 
-            for match_id in match_ids:
-                if matches_processed >= 5:  # Limit to 5 matches
-                    break
-                    
+            # Process matches
+            for match_id in match_ids[:5]:
                 match_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/{match_id}"
                 match_response = requests.get(match_url, headers=headers, timeout=15)
                 
@@ -314,14 +285,10 @@ class Lol(commands.Cog):
                 info = match_data.get("info", {})
                 participants = info.get("participants", [])
                 queue_id = info.get("queueId", 0)
-                game_duration = info.get("gameDuration", 0)
                 
-                # Get readable queue name
-                queue_name = queue_map.get(queue_id, f"Queue {queue_id}")
-                
-                # Convert game duration to minutes
-                duration_minutes = game_duration // 60 if game_duration > 0 else 0
+                queue_name = queue_map.get(queue_id, "Ranked")
 
+                # Find player data
                 for player in participants:
                     if player.get("puuid") == puuid:
                         champion = player.get("championName", "Unknown")
@@ -330,59 +297,42 @@ class Lol(commands.Cog):
                         assists = player.get("assists", 0)
                         win = player.get("win", False)
                         
-                        # Calculate KDA
                         kda_value = (kills + assists) / deaths if deaths > 0 else (kills + assists)
                         kda_list.append(kda_value)
-
-                        # Get champion emoji (you can expand this)
-                        champion_emojis = {
-                            "Jinx": "🔫", "Yasuo": "⚔️", "Lux": "✨", "Zed": "🗡️",
-                            "Ahri": "🦊", "Thresh": "⛓️", "Lee Sin": "👊", "Katarina": "🗡️",
-                            "Vayne": "🏹", "Azir": "🏺", "Syndra": "🔮", "Jhin": "🎭"
-                        }
-                        champ_emoji = champion_emojis.get(champion, "⚔️")
                         
-                        # Format match info with better layout
-                        emoji = "🟢" if win else "🔴"
-                        result_text = "VITÓRIA" if win else "DERROTA"
+                        if win:
+                            wins += 1
                         
-                        match_info = f"{emoji} **{result_text}**\n"
-                        match_info += f"{champ_emoji} **{champion}**\n"
-                        match_info += f"📊 **{kills}/{deaths}/{assists}** (KDA: {kda_value:.1f})\n"
-                        match_info += f"🎮 {queue_name}\n"
-                        match_info += f"⏱️ {duration_minutes}min"
+                        # Simple win/loss indicator
+                        status = "🟢" if win else "🔴"
                         
-                        embed.add_field(
-                            name=f"Partida {matches_processed + 1}",
-                            value=match_info,
-                            inline=True
-                        )
-                        
-                        matches_processed += 1
+                        # Clean format - one line per match
+                        match_line = f"{status} **{champion}** `{kills}/{deaths}/{assists}` {queue_name}"
+                        matches_data.append(match_line)
                         break
 
-            # Calculate average KDA
-            if kda_list:
-                average_kda = sum(kda_list) / len(kda_list)
-                embed.add_field(
-                    name="📈 Estatísticas",
-                    value=f"**Média KDA:** {average_kda:.2f}\n**Partidas analisadas:** {len(kda_list)}",
-                    inline=False
-                )
+            # Build description with all matches
+            if matches_data:
+                embed.description = "\n".join(matches_data)
+                
+                # Simple footer with summary
+                avg_kda = sum(kda_list) / len(kda_list)
+                winrate = (wins / len(kda_list)) * 100
+                
+                embed.set_footer(text=f"{wins}V {len(kda_list)-wins}D • {winrate:.0f}% WR • {avg_kda:.1f} KDA")
             else:
-                embed.description = "Nenhuma partida válida encontrada."
+                embed.description = "Nenhuma partida encontrada"
 
             await interaction.followup.send(embed=embed)
             
         except requests.exceptions.Timeout:
-            await interaction.followup.send("⏰ Timeout na conexão com a API da Riot. Tente novamente.")
+            await interaction.followup.send("⏰ Timeout na API da Riot. Tente novamente.")
         except requests.exceptions.RequestException as e:
-            await interaction.followup.send("⚠️ Erro de conexão com a API da Riot. Tente novamente.")
+            await interaction.followup.send("⚠️ Erro de conexão com a API da Riot.")
             print(f"Request error in /stats: {e}")
         except Exception as e:
             await interaction.followup.send("⚠️ Erro inesperado. Tente novamente.")
             print(f"Unexpected error in /stats: {e}")
-
 
 async def setup(bot):
     await bot.add_cog(Lol(bot))
