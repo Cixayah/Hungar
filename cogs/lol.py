@@ -149,15 +149,15 @@ class Lol(commands.Cog):
                     # Get tier emoji
                     tier_emojis = {
                         "CHALLENGER": "👑",
-                        "GRANDMASTER": "🏆",
-                        "MASTER": "🌟",
+                        "GRANDMASTER": "🔴",
+                        "MASTER": "🟣",
                         "DIAMOND": "💎",
-                        "EMERALD": "🟢",
-                        "PLATINUM": "⚪",
-                        "GOLD": "🟡",
-                        "SILVER": "⚪",  
-                        "BRONZE": "🟤",   
-                        "IRON": "⚫"         
+                        "EMERALD": "❇️",
+                        "PLATINUM": "🟢",
+                        "GOLD": "🥇",
+                        "SILVER": "🥈",  
+                        "BRONZE": "🥉",   
+                        "IRON": "💀"         
                     }
                     
                     tier_emoji = tier_emojis.get(tier.upper(), "🎯")
