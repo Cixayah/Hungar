@@ -333,6 +333,171 @@ class Lol(commands.Cog):
         except Exception as e:
             await interaction.followup.send("⚠️ Erro inesperado. Tente novamente.")
             print(f"Unexpected error in /stats: {e}")
+            
+    # /match command - Estado da partida atual
+    @app_commands.command(name="match", description="Mostra informações da partida atual em andamento.")
+    @app_commands.describe(name="Nome do jogador", tag="Hashtag do jogador (sem o #)")
+    async def match(self, interaction: discord.Interaction, name: str, tag: str):
+        await interaction.response.defer()
+        
+        if not self.api_key:
+            await interaction.followup.send("❌ API key da Riot não configurada.")
+            return
+            
+        headers = {"X-Riot-Token": self.api_key}
+
+        # Get PUUID
+        puuid = await self.get_puuid(name, tag)
+        if not puuid:
+            await interaction.followup.send("❌ Riot ID não encontrado. Verifique se o nome e tag estão corretos.")
+            return
+
+        try:
+            # Get current match directly with PUUID
+            match_url = f"https://br1.api.riotgames.com/lol/spectator/v5/active-games/by-puuid/{puuid}"
+            match_response = requests.get(match_url, headers=headers, timeout=15)
+            
+            # Detailed logging for debugging
+            print(f"Match API Status: {match_response.status_code}")
+            print(f"Match API Response: {match_response.text}")
+            
+            if match_response.status_code == 403:
+                await interaction.followup.send("🚫 Jogador não está em partida no momento. (403 - Forbidden)")
+                return
+            elif match_response.status_code == 404:
+                await interaction.followup.send("🚫 Jogador não está em partida no momento. (404 - Not Found)")
+                return
+            elif match_response.status_code != 200:
+                await interaction.followup.send(f"⚠️ Erro ao buscar partida atual. Status: {match_response.status_code}")
+                print(f"Full error response: {match_response.text}")
+                return
+                
+            match_data = match_response.json()
+            
+            # Game info
+            game_mode = match_data.get("gameMode", "Unknown")
+            game_type = match_data.get("gameType", "Unknown")
+            game_length = match_data.get("gameLength", 0)
+            
+            # Convert game length to minutes
+            minutes = game_length // 60
+            seconds = game_length % 60
+            
+            # Queue mapping
+            queue_map = {
+                420: "Solo/Duo", 440: "Flex", 450: "ARAM",
+                400: "Normal", 430: "Blind", 900: "URF"
+            }
+            queue_id = match_data.get("gameQueueConfigId", 0)
+            queue_name = queue_map.get(queue_id, game_mode)
+            
+            # Get rank info for all players
+            async def get_player_rank(player_puuid):
+                try:
+                    rank_url = f"https://br1.api.riotgames.com/lol/league/v4/entries/by-puuid/{player_puuid}"
+                    rank_response = requests.get(rank_url, headers=headers, timeout=10)
+                    
+                    if rank_response.status_code == 200:
+                        rank_data = rank_response.json()
+                        
+                        # Find Solo/Duo rank
+                        for entry in rank_data:
+                            if entry.get("queueType") == "RANKED_SOLO_5x5":
+                                tier = entry.get("tier", "").capitalize()
+                                rank = entry.get("rank", "")
+                                
+                                if tier.upper() in ["MASTER", "GRANDMASTER", "CHALLENGER"]:
+                                    return tier
+                                elif tier:
+                                    return f"{tier} {rank}"
+                        
+                        return "Unranked"
+                    else:
+                        return "Unranked"
+                except:
+                    return "Unranked"
+            
+            # Process participants
+            participants = match_data.get("participants", [])
+            team1_players = []  # Blue side
+            team2_players = []  # Red side
+            target_player_team = None
+            
+            for participant in participants:
+                player_name = participant.get("summonerName", "Unknown")
+                champion_name = participant.get("championName", "Unknown")
+                team_id = participant.get("teamId", 0)
+                player_puuid = participant.get("puuid", "")
+                
+                # Get rank
+                player_rank = await get_player_rank(player_puuid)
+                
+                # Check if this is our target player
+                is_target = player_puuid == puuid
+                if is_target:
+                    target_player_team = team_id
+                    player_display = f"**{champion_name}** `{player_rank}` ← {name}#{tag}"
+                else:
+                    player_display = f"**{champion_name}** `{player_rank}` {player_name}"
+                
+                if team_id == 100:  # Blue side
+                    team1_players.append(player_display)
+                else:  # Red side
+                    team2_players.append(player_display)
+            
+            # Create embed
+            embed = discord.Embed(
+                title=f"🎮 Partida Atual - {queue_name}",
+                color=0x0099ff,
+                timestamp=discord.utils.utcnow()
+            )
+            
+            # Add game duration
+            embed.add_field(
+                name="⏱️ Duração",
+                value=f"{minutes:02d}:{seconds:02d}",
+                inline=True
+            )
+            
+            # Add empty field for spacing
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+            
+            # Team colors based on target player's team
+            if target_player_team == 100:
+                team1_name = "🔵 Seu Time (Azul)"
+                team2_name = "🔴 Time Inimigo (Vermelho)"
+            else:
+                team1_name = "🔵 Time Azul"
+                team2_name = "🔴 Seu Time (Vermelho)"
+            
+            # Add teams
+            if team1_players:
+                embed.add_field(
+                    name=team1_name,
+                    value="\n".join(team1_players),
+                    inline=True
+                )
+            
+            if team2_players:
+                embed.add_field(
+                    name=team2_name,
+                    value="\n".join(team2_players),
+                    inline=True
+                )
+            
+            embed.set_footer(text="Dados em tempo real da Riot API")
+            
+            await interaction.followup.send(embed=embed)
+            
+        except requests.exceptions.Timeout:
+            await interaction.followup.send("⏰ Timeout na API da Riot. Tente novamente.")
+        except requests.exceptions.RequestException as e:
+            await interaction.followup.send("⚠️ Erro de conexão com a API da Riot.")
+            print(f"Request error in /match: {e}")
+        except Exception as e:
+            await interaction.followup.send("⚠️ Erro inesperado. Tente novamente.")
+            print(f"Unexpected error in /match: {e}")
 
 async def setup(bot):
     await bot.add_cog(Lol(bot))
