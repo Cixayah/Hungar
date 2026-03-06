@@ -25,8 +25,8 @@ async def load_cogs():
 @bot.command()
 async def syncro(ctx: commands.Context):
     # IDs dos membros autorizados a usar o comando
-    allowed_ids = [270943487300599808, 223614228903231488, 476897909565292544]
-    # cix, w7, lari
+    allowed_ids = [270943487300599808, 1479531734700658912, 476897909565292544]
+    # cix, cix2, lari
 
     # Verifica se o autor do comando está na lista de IDs autorizados
     if ctx.author.id in allowed_ids:

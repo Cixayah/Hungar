@@ -24,7 +24,8 @@ class DeleteMessagesCog(commands.Cog):
             return
 
         # Verifica se o usuário é o permitido
-        if interact.user.id != 270943487300599808:
+        allowed_users = {270943487300599808, 1479531734700658912}
+        if interact.user.id not in allowed_users:
             await interact.response.send_message(
                 "Você não tem permissão para usar este comando.", ephemeral=True
             )
