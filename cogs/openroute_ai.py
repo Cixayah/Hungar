@@ -33,7 +33,7 @@ class OpenRouter(commands.Cog):
         self,
         interact: discord.Interaction,
         prompt: str,
-        model: str = "google/gemini-2.0-flash-001"
+        model: str = "nvidia/nemotron-3-super-120b-a12b:free"
     ):
         await interact.response.defer()
         try:
