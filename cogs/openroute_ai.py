@@ -10,7 +10,7 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-async def generate_text(prompt: str, model: str = "google/gemini-2.0-flash-001") -> str:
+async def generate_text(prompt: str, model: str = "nvidia/nemotron-3-super-120b-a12b:free") -> str:
     response = await client.chat.completions.create(
         model=model,
         messages=[
